@@ -69,5 +69,15 @@
     ],
     "completed": false,
     "createdAt": "2025-09-27T19:08:59.748Z"
+  },
+  {
+    "id": 1759015019893.856,
+    "userId": 1759015000091,
+    "title": "Test Task",
+    "duration": 30,
+    "priority": "high",
+    "dependencies": [],
+    "completed": false,
+    "createdAt": "2025-09-27T23:16:59.893Z"
   }
 ]
