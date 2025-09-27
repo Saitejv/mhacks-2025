@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'focus-minutes:v1';
+const PREFS_KEY = 'focus-minutes:prefs:v1';
 
 // Data model helpers
 function uid() { return Math.random().toString(36).slice(2, 9) }
@@ -26,6 +27,16 @@ const recommendationPanel = document.getElementById('recommendation');
 let selectedDuration = 30;
 let selectedPriority = 'Medium';
 
+// load preferences if present
+try {
+    const prefsRaw = localStorage.getItem(PREFS_KEY);
+    if (prefsRaw) {
+        const p = JSON.parse(prefsRaw);
+        if (p.selectedDuration) selectedDuration = p.selectedDuration;
+        if (p.selectedPriority) selectedPriority = p.selectedPriority;
+    }
+} catch (e) { }
+
 function renderDepsOptions() {
     depsSelect.innerHTML = '';
     state.tasks.forEach(t => {
@@ -44,11 +55,17 @@ function addTask(e) {
     const due = dueInput.value ? new Date(dueInput.value).toISOString() : null;
     const task = { id: uid(), title, duration, priority: selectedPriority, deps, completed: false, due, createdAt: new Date().toISOString() };
     state.tasks.push(task);
-    save(state); form.reset(); customDuration.value = ''; selectedDuration = 30; selectedPriority = 'Medium';
-    durationChips.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    durationChips.querySelector('button[data-min="30"]').classList.add('active');
-    priorityChips.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    priorityChips.querySelector('button[data-priority="Medium"]').classList.add('active');
+    save(state);
+    form.reset(); customDuration.value = '';
+    // keep current selectedDuration/selectedPriority so user preference persists
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration, selectedPriority })); } catch (e) { }
+    // reflect current selection in chip styles
+    clearDurationActive();
+    const dSel = durationChips.querySelector(`button[data-min="${selectedDuration}"]`);
+    if (dSel) { dSel.classList.remove('bg-white/5', 'text-white'); dSel.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold'); }
+    clearPriorityActive();
+    const pSel = priorityChips.querySelector(`button[data-priority="${selectedPriority}"]`);
+    if (pSel) { pSel.classList.remove('bg-white/5', 'text-white'); pSel.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold'); }
     renderAll();
 }
 
@@ -194,13 +211,14 @@ function renderAll() {
 function clearDurationActive() {
     durationChips.querySelectorAll('button').forEach(x => {
         x.classList.remove('bg-sky-500', 'text-slate-900', 'font-semibold');
-        x.classList.add('bg-white/5', 'text-slate-200');
+        x.classList.add('bg-white/5', 'text-white');
     });
 }
 function clearPriorityActive() {
     priorityChips.querySelectorAll('button').forEach(x => {
-        x.classList.remove('bg-amber-400', 'text-slate-900', 'font-semibold');
-        x.classList.add('bg-white/5', 'text-slate-200');
+        // use same blue active style as duration for consistency
+        x.classList.remove('bg-sky-500', 'text-slate-900', 'font-semibold');
+        x.classList.add('bg-white/5', 'text-white');
     });
 }
 durationChips.addEventListener('click', (e) => {
@@ -210,13 +228,15 @@ durationChips.addEventListener('click', (e) => {
     b.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold');
     selectedDuration = Number(b.dataset.min);
     customDuration.value = '';
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration, selectedPriority })); } catch (e) { }
 });
 priorityChips.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     clearPriorityActive();
     b.classList.remove('bg-white/5', 'text-slate-200');
-    b.classList.add('bg-amber-400', 'text-slate-900', 'font-semibold');
+    b.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold');
     selectedPriority = b.dataset.priority;
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration, selectedPriority })); } catch (e) { }
 });
 
 form.addEventListener('submit', addTask);
@@ -235,3 +255,12 @@ if (state.tasks.length === 0) {
 }
 
 renderAll();
+
+// initialize default chip styles (ensure 30m and Medium appear active)
+// initialize chip styles from persisted prefs (or defaults)
+clearDurationActive();
+const initD = durationChips.querySelector(`button[data-min="${selectedDuration}"]`) || durationChips.querySelector('button[data-min="30"]');
+if (initD) { initD.classList.remove('bg-white/5', 'text-white'); initD.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold'); }
+clearPriorityActive();
+const initPr = priorityChips.querySelector(`button[data-priority="${selectedPriority}"]`) || priorityChips.querySelector('button[data-priority="Medium"]');
+if (initPr) { initPr.classList.remove('bg-white/5', 'text-white'); initPr.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold'); }

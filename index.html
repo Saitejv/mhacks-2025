@@ -3,75 +3,14 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Focus Minutes — Minimal Todo</title>
-    <link rel="stylesheet" href="./style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Focus Minutes — React</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body>
-    <main class="app">
-        <header>
-            <h1>Focus Minutes</h1>
-            <p class="subtitle">Turn spare minutes into meaningful wins</p>
-        </header>
-
-        <section class="create">
-            <form id="task-form">
-                <input id="title" placeholder="New task title" required />
-
-                <div class="chips-row">
-                    <label>Duration</label>
-                    <div class="chips" id="duration-chips">
-                        <button type="button" data-min="10">10m</button>
-                        <button type="button" data-min="30" class="active">30m</button>
-                        <button type="button" data-min="60">60m</button>
-                        <input id="custom-duration" type="number" min="1" placeholder="custom (min)" />
-                    </div>
-                </div>
-
-                <div class="chips-row">
-                    <label>Priority</label>
-                    <div class="chips" id="priority-chips">
-                        <section class="bg-white/5 p-4 rounded-xl mb-4">
-                            <form id="task-form" class="space-y-3">
-                                <input id="title" placeholder="New task title" required
-                                    class="w-full px-3 py-2 rounded-lg bg-transparent border border-white/5 text-slate-100" />
-                    </div>
-                </div>
-
-                <div class="deps-row">
-                    <label>Depends on</label>
-                    <select id="deps" multiple size="3"></select>
-                </div>
-
-                <div class="row">
-                    <input id="due" type="date" />
-                    <button id="add-task">Add task</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="recommend">
-            <h2>Find a task for spare time</h2>
-            <div class="row">
-                <input id="available-minutes" type="number" min="1" placeholder="Available minutes (e.g., 30)" />
-                <button id="recommend-btn">Recommend</button>
-            </div>
-            <div id="recommendation" class="panel"></div>
-        </section>
-
-        <section class="tasks">
-            <h2>Tasks</h2>
-            <div id="tasks-list"></div>
-        </section>
-
-        <footer>
-            <small>Minimal, offline-first. Data saved in browser storage.</small>
-        </footer>
-    </main>
-
-    <script src="./app.js" type="module"></script>
+<body class="bg-slate-900 text-white min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
 </body>
 
 </html>

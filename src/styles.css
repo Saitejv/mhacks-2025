@@ -1,0 +1,10 @@
+/* small helpers; primary styles via Tailwind CDN */
+body {
+    font-family: Inter, system-ui, Segoe UI, Roboto, 'Helvetica Neue', Arial
+}
+
+.js-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+    padding: 0.6rem;
+    border-radius: 0.6rem
+}
