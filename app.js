@@ -1,237 +1,348 @@
-const STORAGE_KEY = 'focus-minutes:v1';
-
-// Data model helpers
-function uid() { return Math.random().toString(36).slice(2, 9) }
-
-function load() {
-    try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : { tasks: [] } } catch (e) { return { tasks: [] } }
-}
-function save(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) }
-
-const state = load();
-
-// DOM refs
-const form = document.getElementById('task-form');
-const titleEl = document.getElementById('title');
-const durationChips = document.getElementById('duration-chips');
-const priorityChips = document.getElementById('priority-chips');
-const customDuration = document.getElementById('custom-duration');
-const depsSelect = document.getElementById('deps');
-const dueInput = document.getElementById('due');
-const tasksList = document.getElementById('tasks-list');
-const recommendBtn = document.getElementById('recommend-btn');
-const availableMinutesInput = document.getElementById('available-minutes');
-const recommendationPanel = document.getElementById('recommendation');
-
-let selectedDuration = 30;
-let selectedPriority = 'Medium';
-
-function renderDepsOptions() {
-    depsSelect.innerHTML = '';
-    state.tasks.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id; opt.textContent = t.title;
-        depsSelect.appendChild(opt);
-    })
-}
-
-function addTask(e) {
-    e?.preventDefault();
-    const title = titleEl.value.trim(); if (!title) return;
-    const custom = parseInt(customDuration.value, 10);
-    const duration = (custom && custom > 0) ? custom : selectedDuration;
-    const deps = Array.from(depsSelect.selectedOptions).map(o => o.value);
-    const due = dueInput.value ? new Date(dueInput.value).toISOString() : null;
-    const task = { id: uid(), title, duration, priority: selectedPriority, deps, completed: false, due, createdAt: new Date().toISOString() };
-    state.tasks.push(task);
-    save(state); form.reset(); customDuration.value = ''; selectedDuration = 30; selectedPriority = 'Medium';
-    durationChips.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    durationChips.querySelector('button[data-min="30"]').classList.add('active');
-    priorityChips.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    priorityChips.querySelector('button[data-priority="Medium"]').classList.add('active');
-    renderAll();
-}
-
-function toggleComplete(id) {
-    const t = state.tasks.find(x => x.id === id); if (!t) return;
-    t.completed = !t.completed; save(state); renderAll();
-}
-
-function deleteTask(id) {
-    // remove id from other deps
-    state.tasks.forEach(t => { t.deps = t.deps.filter(d => d !== id) });
-    state.tasks = state.tasks.filter(t => t.id !== id); save(state); renderAll();
-}
-
-function isBlocked(task) {
-    if (!task.deps || task.deps.length === 0) return false;
-    for (const d of task.deps) {
-        const dep = state.tasks.find(x => x.id === d);
-        if (!dep || !dep.completed) return true;
+// Task Management System
+class TaskManager {
+    constructor() {
+        this.tasks = this.loadTasks();
+        this.currentFilter = 'all';
+        this.initializeEventListeners();
+        this.renderTasks();
+        this.updateDependencyOptions();
     }
-    return false;
-}
 
-function humanDue(task) {
-    if (!task.due) return '';
-    const d = new Date(task.due); return d.toLocaleDateString();
-}
-
-function renderTasks() {
-    tasksList.innerHTML = '';
-    if (state.tasks.length === 0) {
-        tasksList.innerHTML = '<small>No tasks yet — add one above.</small>';
-        return;
+    // Task Data Model
+    createTask(title, duration, priority, dependencies = []) {
+        const task = {
+            id: Date.now() + Math.random(),
+            title: title.trim(),
+            duration: parseInt(duration),
+            priority: priority,
+            dependencies: dependencies,
+            completed: false,
+            createdAt: new Date().toISOString()
+        };
+        return task;
     }
-    const sorted = [...state.tasks].sort((a, b) => {
-        if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        const p = (p) => p.priority === 'High' ? 3 : (p.priority === 'Medium' ? 2 : 1);
-        if (p(b) !== p(a)) return p(b) - p(a);
-        return new Date(a.createdAt) - new Date(b.createdAt);
-    });
-    sorted.forEach(t => {
-        const el = document.createElement('div'); el.className = 'flex justify-between items-start p-3 rounded-xl bg-white/3 border border-white/5';
-        const left = document.createElement('div'); left.className = 'flex gap-3 items-start';
-        const info = document.createElement('div');
-        const title = document.createElement('div'); title.textContent = t.title; if (t.completed) title.classList.add('opacity-50', 'line-through'); title.classList.add('font-medium');
-        const meta = document.createElement('div'); meta.className = 'flex gap-2 items-center text-sm text-slate-300 mt-2';
-        const dur = document.createElement('span'); dur.className = 'px-2 py-0.5 rounded-full bg-white/5 text-xs text-slate-100'; dur.textContent = t.duration + 'm';
-        const pri = document.createElement('span'); pri.className = 'px-2 py-0.5 rounded-full bg-white/5 text-xs text-slate-100'; pri.textContent = t.priority;
-        const due = document.createElement('span'); due.className = 'px-2 py-0.5 rounded-full bg-white/5 text-xs text-slate-100'; due.textContent = t.due ? ('Due: ' + humanDue(t)) : '';
-        meta.appendChild(dur); meta.appendChild(pri); if (t.due) meta.appendChild(due);
-        info.appendChild(title); info.appendChild(meta);
-        left.appendChild(info);
 
-        const right = document.createElement('div'); right.className = 'flex gap-2 items-center';
-        const blocked = isBlocked(t);
-        const stateBadge = document.createElement('span'); stateBadge.className = blocked ? 'px-2 py-0.5 rounded-full bg-rose-500 text-white text-xs' : 'px-2 py-0.5 rounded-full bg-emerald-400 text-slate-900 text-xs'; stateBadge.textContent = blocked ? 'Blocked' : 'Ready';
-        right.appendChild(stateBadge);
-        const doneBtn = document.createElement('button'); doneBtn.textContent = t.completed ? 'Undo' : 'Done'; doneBtn.className = 'px-2 py-1 rounded-md bg-white/5 text-sm'; doneBtn.onclick = () => toggleComplete(t.id);
-        const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className = 'px-2 py-1 rounded-md bg-white/5 text-sm'; delBtn.onclick = () => { if (confirm('Delete task?')) deleteTask(t.id) };
-        right.appendChild(doneBtn); right.appendChild(delBtn);
+    // Local Storage Management
+    saveTasks() {
+        localStorage.setItem('smartTodoTasks', JSON.stringify(this.tasks));
+    }
 
-        el.appendChild(left); el.appendChild(right);
+    loadTasks() {
+        const stored = localStorage.getItem('smartTodoTasks');
+        return stored ? JSON.parse(stored) : [];
+    }
 
-        if (t.deps && t.deps.length > 0) {
-            const depsEl = document.createElement('div'); depsEl.className = 'text-sm text-slate-400 mt-2';
-            const depNames = t.deps.map(d => {
-                const dep = state.tasks.find(x => x.id === d); return dep ? (dep.title + (dep.completed ? ' ✓' : ' ✗')) : '(missing)';
-            }).join(' · ');
-            depsEl.textContent = 'Depends on: ' + depNames;
-            el.appendChild(depsEl);
+    // Task Operations
+    addTask(title, duration, priority, dependencies = []) {
+        const task = this.createTask(title, duration, priority, dependencies);
+        this.tasks.push(task);
+        this.saveTasks();
+        this.renderTasks();
+        this.updateDependencyOptions();
+        return task;
+    }
+
+    deleteTask(taskId) {
+        this.tasks = this.tasks.filter(task => task.id !== taskId);
+        // Remove this task from other tasks' dependencies
+        this.tasks.forEach(task => {
+            task.dependencies = task.dependencies.filter(depId => depId !== taskId);
+        });
+        this.saveTasks();
+        this.renderTasks();
+        this.updateDependencyOptions();
+    }
+
+    toggleTaskCompletion(taskId) {
+        const task = this.tasks.find(task => task.id === taskId);
+        if (task) {
+            task.completed = !task.completed;
+            this.saveTasks();
+            this.renderTasks();
+        }
+    }
+
+    // Task Status Analysis
+    isTaskBlocked(task) {
+        if (task.completed) return false;
+        return task.dependencies.some(depId => {
+            const dependency = this.tasks.find(t => t.id === depId);
+            return dependency && !dependency.completed;
+        });
+    }
+
+    isTaskAvailable(task) {
+        return !task.completed && !this.isTaskBlocked(task);
+    }
+
+    getTaskStatus(task) {
+        if (task.completed) return 'completed';
+        if (this.isTaskBlocked(task)) return 'blocked';
+        return 'available';
+    }
+
+    // Recommendation Engine
+    getRecommendations(availableMinutes) {
+        // Filter available tasks that fit within time constraint
+        const eligibleTasks = this.tasks.filter(task => 
+            this.isTaskAvailable(task) && task.duration <= availableMinutes
+        );
+
+        if (eligibleTasks.length === 0) {
+            return { recommended: null, alternatives: [] };
         }
 
-        tasksList.appendChild(el);
-    });
-}
+        // Scoring algorithm considering priority and urgency
+        const scoredTasks = eligibleTasks.map(task => {
+            let score = 0;
+            
+            // Priority scoring (High: 10, Medium: 5, Low: 1)
+            const priorityScores = { high: 10, medium: 5, low: 1 };
+            score += priorityScores[task.priority] || 1;
+            
+            // Duration efficiency (prefer tasks that use available time well)
+            const timeUtilization = task.duration / availableMinutes;
+            score += timeUtilization * 5;
+            
+            // Slight preference for older tasks
+            const daysSinceCreated = (Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+            score += Math.min(daysSinceCreated * 0.1, 2);
 
-function scoreTask(task) {
-    // higher is better
-    const pri = (task.priority === 'High' ? 30 : task.priority === 'Medium' ? 18 : 8);
-    let urgency = 0;
-    if (task.due) {
-        const days = Math.max(0, Math.floor((new Date(task.due) - new Date()) / (1000 * 60 * 60 * 24)));
-        urgency = days <= 0 ? 20 : days <= 2 ? 12 : days <= 7 ? 6 : 0;
-    }
-    // shorter tasks slightly preferred
-    const lengthBonus = Math.max(0, 10 - Math.log(task.duration + 1));
-    return pri + urgency + lengthBonus;
-}
-
-function recommend(minutes) {
-    const available = Number(minutes) || 0;
-    if (available <= 0) return { best: null, alternatives: [] };
-    const candidates = state.tasks.filter(t => !t.completed && !isBlocked(t));
-    const fitting = candidates.filter(t => t.duration <= available);
-    const scored = fitting.map(t => ({ t, score: scoreTask(t) })).sort((a, b) => b.score - a.score);
-    const best = scored.length ? scored[0].t : null;
-    const alternatives = scored.slice(1, 5).map(s => s.t);
-    // if nothing fits, maybe suggest the highest priority unblocked task (flag as long)
-    if (!best) {
-        const fallback = candidates.map(t => ({ t, score: scoreTask(t) })).sort((a, b) => b.score - a.score).slice(0, 3).map(x => x.t);
-        return { best: null, alternatives: fallback };
-    }
-    return { best, alternatives };
-}
-
-function renderRecommendation(res, minutes) {
-    recommendationPanel.innerHTML = '';
-    if (!res || (!res.best && res.alternatives.length === 0)) {
-        recommendationPanel.textContent = 'No available tasks to recommend.'; return;
-    }
-    if (res.best) {
-        const card = document.createElement('div'); card.className = 'js-panel rounded-xl';
-        const title = document.createElement('div'); title.className = 'font-semibold'; title.textContent = res.best.title + ` — ${res.best.duration}m`;
-        const meta = document.createElement('div'); meta.className = 'text-sm text-slate-300 mt-1'; meta.textContent = `${res.best.priority} priority${res.best.due ? ' · due ' + humanDue(res.best) : ''}`;
-        const actBtn = document.createElement('button'); actBtn.textContent = 'Start'; actBtn.className = 'mt-3 px-3 py-1 rounded-md bg-emerald-400 text-slate-900 font-semibold'; actBtn.onclick = () => { toggleComplete(res.best.id); recommendationPanel.innerHTML = ''; renderAll(); };
-        card.appendChild(title); card.appendChild(meta); card.appendChild(actBtn);
-        recommendationPanel.appendChild(card);
-    } else {
-        const note = document.createElement('div'); note.textContent = `No task fits within ${minutes}m — top priorities you could start:`; recommendationPanel.appendChild(note);
-    }
-
-    if (res.alternatives && res.alternatives.length > 0) {
-        const list = document.createElement('div'); list.className = 'mt-2 space-y-2';
-        res.alternatives.forEach(t => {
-            const el = document.createElement('div'); el.className = 'flex justify-between py-2';
-            const left = document.createElement('div'); left.className = 'text-sm text-slate-200'; left.textContent = `${t.title} — ${t.duration}m · ${t.priority}`;
-            const right = document.createElement('div');
-            const start = document.createElement('button'); start.textContent = 'Start'; start.className = 'px-3 py-1 rounded-md bg-white/5 text-sm'; start.onclick = () => { toggleComplete(t.id); renderAll(); recommendationPanel.innerHTML = ''; };
-            right.appendChild(start);
-            el.appendChild(left); el.appendChild(right);
-            list.appendChild(el);
+            return { task, score };
         });
-        recommendationPanel.appendChild(list);
+
+        // Sort by score (descending)
+        scoredTasks.sort((a, b) => b.score - a.score);
+
+        return {
+            recommended: scoredTasks[0]?.task || null,
+            alternatives: scoredTasks.slice(1, 4).map(item => item.task)
+        };
+    }
+
+    // UI Event Listeners
+    initializeEventListeners() {
+        // Task form submission
+        const taskForm = document.getElementById('task-form');
+        taskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleTaskFormSubmit();
+        });
+
+        // Recommendation request
+        const getRecommendationBtn = document.getElementById('get-recommendation');
+        getRecommendationBtn.addEventListener('click', () => {
+            this.handleRecommendationRequest();
+        });
+
+        // Filter buttons
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.handleFilterChange(e.target.dataset.filter);
+            });
+        });
+
+        // Enter key on time input
+        const availableTimeInput = document.getElementById('available-time');
+        availableTimeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.handleRecommendationRequest();
+            }
+        });
+    }
+
+    handleTaskFormSubmit() {
+        const title = document.getElementById('task-title').value;
+        const duration = document.getElementById('task-duration').value;
+        const priority = document.getElementById('task-priority').value;
+        const dependencySelect = document.getElementById('task-dependencies');
+        const dependencies = Array.from(dependencySelect.selectedOptions).map(option => parseFloat(option.value));
+
+        if (title && duration && priority) {
+            this.addTask(title, duration, priority, dependencies);
+            document.getElementById('task-form').reset();
+        }
+    }
+
+    handleRecommendationRequest() {
+        const availableTime = parseInt(document.getElementById('available-time').value);
+        if (!availableTime || availableTime <= 0) {
+            alert('Please enter a valid time in minutes');
+            return;
+        }
+
+        const recommendations = this.getRecommendations(availableTime);
+        this.renderRecommendations(recommendations, availableTime);
+    }
+
+    handleFilterChange(filter) {
+        this.currentFilter = filter;
+        
+        // Update active filter button
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+        
+        this.renderTasks();
+    }
+
+    // UI Rendering
+    renderTasks() {
+        const container = document.getElementById('tasks-container');
+        let filteredTasks = this.tasks;
+
+        // Apply current filter
+        switch (this.currentFilter) {
+            case 'available':
+                filteredTasks = this.tasks.filter(task => this.isTaskAvailable(task));
+                break;
+            case 'blocked':
+                filteredTasks = this.tasks.filter(task => this.isTaskBlocked(task));
+                break;
+            case 'completed':
+                filteredTasks = this.tasks.filter(task => task.completed);
+                break;
+        }
+
+        if (filteredTasks.length === 0) {
+            container.innerHTML = this.renderEmptyState();
+            return;
+        }
+
+        container.innerHTML = filteredTasks.map(task => this.renderTask(task)).join('');
+    }
+
+    renderTask(task) {
+        const status = this.getTaskStatus(task);
+        const dependencies = this.getTaskDependencyNames(task);
+        
+        return `
+            <div class="task-item ${status}">
+                <div class="task-header">
+                    <div>
+                        <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
+                        <div class="task-chips">
+                            <span class="chip chip-duration">${task.duration} min</span>
+                            <span class="chip chip-priority ${task.priority}">${task.priority.toUpperCase()}</span>
+                            <span class="chip chip-status ${status}">${status.toUpperCase()}</span>
+                        </div>
+                        ${dependencies.length > 0 ? `
+                            <div class="task-dependencies">
+                                <strong>Depends on:</strong> ${dependencies.join(', ')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="task-actions">
+                        ${!task.completed ? `
+                            <button class="btn btn-small btn-success" onclick="taskManager.toggleTaskCompletion(${task.id})">
+                                Complete
+                            </button>
+                        ` : `
+                            <button class="btn btn-small" onclick="taskManager.toggleTaskCompletion(${task.id})">
+                                Undo
+                            </button>
+                        `}
+                        <button class="btn btn-small btn-danger" onclick="taskManager.deleteTask(${task.id})">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderEmptyState() {
+        const messages = {
+            all: 'No tasks yet. Add your first task above!',
+            available: 'No available tasks. Create some tasks or complete dependencies.',
+            blocked: 'No blocked tasks. Great job keeping things unblocked!',
+            completed: 'No completed tasks yet. Start completing some tasks!'
+        };
+
+        return `
+            <div class="empty-state">
+                <h3>Nothing here</h3>
+                <p>${messages[this.currentFilter]}</p>
+            </div>
+        `;
+    }
+
+    renderRecommendations(recommendations, availableTime) {
+        const panel = document.getElementById('recommendation-panel');
+        const recommendedContainer = document.getElementById('recommended-task');
+        const alternativesContainer = document.getElementById('alternative-tasks');
+
+        if (!recommendations.recommended) {
+            recommendedContainer.innerHTML = `
+                <div class="empty-state">
+                    <h3>No tasks available</h3>
+                    <p>No tasks can be completed in ${availableTime} minutes. Try increasing your available time or add shorter tasks.</p>
+                </div>
+            `;
+            alternativesContainer.style.display = 'none';
+        } else {
+            recommendedContainer.innerHTML = `
+                <div class="recommendation-title">Perfect Match!</div>
+                ${this.renderTask(recommendations.recommended)}
+            `;
+
+            if (recommendations.alternatives.length > 0) {
+                alternativesContainer.innerHTML = `
+                    <h3>Other Options</h3>
+                    ${recommendations.alternatives.map(task => this.renderTask(task)).join('')}
+                `;
+                alternativesContainer.style.display = 'block';
+            } else {
+                alternativesContainer.style.display = 'none';
+            }
+        }
+
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    updateDependencyOptions() {
+        const select = document.getElementById('task-dependencies');
+        const availableTasks = this.tasks.filter(task => !task.completed);
+        
+        select.innerHTML = availableTasks.map(task => 
+            `<option value="${task.id}">${task.title}</option>`
+        ).join('');
+    }
+
+    getTaskDependencyNames(task) {
+        return task.dependencies.map(depId => {
+            const dependency = this.tasks.find(t => t.id === depId);
+            return dependency ? dependency.title : 'Unknown';
+        });
     }
 }
 
-function renderAll() {
-    renderDepsOptions(); renderTasks();
-}
+// Initialize the application
+let taskManager;
 
-// wire up chips
-// manage active chip styles (Tailwind classes)
-function clearDurationActive() {
-    durationChips.querySelectorAll('button').forEach(x => {
-        x.classList.remove('bg-sky-500', 'text-slate-900', 'font-semibold');
-        x.classList.add('bg-white/5', 'text-slate-200');
-    });
-}
-function clearPriorityActive() {
-    priorityChips.querySelectorAll('button').forEach(x => {
-        x.classList.remove('bg-amber-400', 'text-slate-900', 'font-semibold');
-        x.classList.add('bg-white/5', 'text-slate-200');
-    });
-}
-durationChips.addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    clearDurationActive();
-    b.classList.remove('bg-white/5', 'text-slate-200');
-    b.classList.add('bg-sky-500', 'text-slate-900', 'font-semibold');
-    selectedDuration = Number(b.dataset.min);
-    customDuration.value = '';
-});
-priorityChips.addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    clearPriorityActive();
-    b.classList.remove('bg-white/5', 'text-slate-200');
-    b.classList.add('bg-amber-400', 'text-slate-900', 'font-semibold');
-    selectedPriority = b.dataset.priority;
+document.addEventListener('DOMContentLoaded', () => {
+    taskManager = new TaskManager();
 });
 
-form.addEventListener('submit', addTask);
-recommendBtn.addEventListener('click', () => {
-    const mins = Number(availableMinutesInput.value);
-    const res = recommend(mins);
-    renderRecommendation(res, mins);
+// Add some sample data for demo purposes (only if no existing tasks)
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (taskManager.tasks.length === 0) {
+            // Add some sample tasks for demonstration
+            taskManager.addTask('Review project requirements', 15, 'high', []);
+            taskManager.addTask('Set up development environment', 30, 'high', []);
+            taskManager.addTask('Create wireframes', 45, 'medium', []);
+            taskManager.addTask('Write documentation', 60, 'low', []);
+            
+            // Add a task with dependencies
+            const task1 = taskManager.tasks.find(t => t.title === 'Review project requirements');
+            const task2 = taskManager.tasks.find(t => t.title === 'Set up development environment');
+            if (task1 && task2) {
+                taskManager.addTask('Start coding', 120, 'high', [task1.id, task2.id]);
+            }
+        }
+    }, 100);
 });
-
-// initial sample data (only if empty)
-if (state.tasks.length === 0) {
-    state.tasks.push({ id: uid(), title: 'Write project outline', duration: 30, priority: 'High', deps: [], completed: false, due: null, createdAt: new Date().toISOString() });
-    state.tasks.push({ id: uid(), title: 'Read research notes', duration: 60, priority: 'Medium', deps: [], completed: false, due: null, createdAt: new Date().toISOString() });
-    state.tasks.push({ id: uid(), title: 'Email collaborator', duration: 10, priority: 'High', deps: [], completed: false, due: null, createdAt: new Date().toISOString() });
-    save(state);
-}
-
-renderAll();
