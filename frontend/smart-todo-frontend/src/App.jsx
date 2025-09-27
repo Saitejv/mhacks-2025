@@ -1,14 +1,19 @@
 import { useState, useEffect } from 'react';
-import { taskService } from './services/api';
+import { taskService, authService } from './services/api';
 import TaskForm from './components/TaskForm';
 import TaskList from './components/TaskList';
 import RecommendationPanel from './components/RecommendationPanel';
 import TimeInput from './components/TimeInput';
 import Sidebar from './components/Sidebar';
 import TaskHierarchy from './components/TaskHierarchy';
+import AuthForm from './components/AuthForm';
 import './App.css';
 
 function App() {
+  // authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
   // data + loading
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,11 +22,35 @@ function App() {
   // ui state
   const [currentPage, setCurrentPage] = useState('choose-tasks'); // choose-tasks, add-task, hierarchy
   const [currentFilter, setCurrentFilter] = useState('all');
-  const [isSignedIn, setIsSignedIn] = useState(false);
 
   useEffect(() => {
-    loadTasks();
+    // Check if user is already authenticated
+    const token = authService.getToken();
+    const storedUser = authService.getStoredUser();
+    
+    if (token && storedUser) {
+      setIsAuthenticated(true);
+      setCurrentUser(storedUser);
+      loadTasks();
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  const handleLogin = (user, token) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    setCurrentPage('choose-tasks');
+    loadTasks();
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setTasks([]);
+    setCurrentPage('choose-tasks');
+  };
 
   const loadTasks = async () => {
     try {
@@ -102,7 +131,12 @@ function App() {
     setCurrentPage(page);
   };
 
-  if (loading) return <div className="loading">Loading tasks...</div>;
+  if (loading) return <div className="loading">Loading...</div>;
+
+  // Show authentication form if not signed in
+  if (!isAuthenticated) {
+    return <AuthForm onLogin={handleLogin} />;
+  }
 
   return (
     <div className="app layout">
@@ -110,8 +144,9 @@ function App() {
         <Sidebar
           currentPage={currentPage}
           onNavigate={handleNavigate}
-          isSignedIn={isSignedIn}
-          onSignInToggle={() => setIsSignedIn(prev => !prev)}
+          isSignedIn={isAuthenticated}
+          currentUser={currentUser}
+          onSignInToggle={handleLogout}
         />
       </aside>
 
@@ -120,6 +155,9 @@ function App() {
           <header className="app-header">
             <h1>Smart To-Do</h1>
             <p className="subtitle">Intelligent task management with time-based recommendations</p>
+            {currentUser && (
+              <p className="user-greeting">Welcome back, {currentUser.username}!</p>
+            )}
           </header>
 
           {error && <div className="error-message">{error}</div>}

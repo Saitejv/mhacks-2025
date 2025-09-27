@@ -1,10 +1,15 @@
 import React from 'react';
 
-export default function Sidebar({ currentPage, onNavigate, isSignedIn, onSignInToggle }) {
+export default function Sidebar({ currentPage, onNavigate, isSignedIn, currentUser, onSignInToggle }) {
     return (
         <div className="side-panel">
             <div className="side-brand">
                 <h2>Menu</h2>
+                {currentUser && (
+                    <p className="user-info">
+                        <small>Signed in as {currentUser.username}</small>
+                    </p>
+                )}
             </div>
 
             <nav className="side-nav">
@@ -32,7 +37,7 @@ export default function Sidebar({ currentPage, onNavigate, isSignedIn, onSignInT
 
             <div className="side-footer">
                 <button className="btn small" onClick={onSignInToggle}>
-                    {isSignedIn ? 'Sign Out' : 'Sign In'}
+                    Sign Out
                 </button>
             </div>
         </div>

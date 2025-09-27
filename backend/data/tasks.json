@@ -79,5 +79,15 @@
     "dependencies": [],
     "completed": false,
     "createdAt": "2025-09-27T23:16:59.893Z"
+  },
+  {
+    "id": 1759015434437.1567,
+    "userId": 1759015314656,
+    "title": "Demo Task for User",
+    "duration": 25,
+    "priority": "high",
+    "dependencies": [],
+    "completed": false,
+    "createdAt": "2025-09-27T23:23:54.437Z"
   }
 ]
