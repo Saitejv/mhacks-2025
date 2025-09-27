@@ -22,6 +22,91 @@ body {
   padding: 2rem 1rem;
 }
 
+/* Layout for persistent sidebar */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 17%;
+  min-width: 220px;
+  background: #ffffff;
+  border-right: 1px solid #e9ecef;
+  padding: 1.5rem;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.03);
+
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.main-content {
+  /* sit to the right of the fixed sidebar */
+  margin-left: max(17%, 220px);
+  width: calc(100% - max(17%, 220px));
+
+  /* center inner content horizontally */
+  display: flex;
+  justify-content: center;
+
+  /* your existing spacing */
+  padding: 2rem 1rem;
+}
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.side-brand h2 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.side-link {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.side-link.active,
+.side-link:hover {
+  background: #f1f6fb;
+}
+
+.side-footer {
+  margin-top: 1rem;
+}
+
+.btn.small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+}
+
+.hierarchy-node {
+  padding: 0.25rem 0;
+}
+
+.hierarchy-title {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
 /* Header */
 .app-header {
   text-align: center;
@@ -111,7 +196,8 @@ label {
   font-weight: 500;
 }
 
-input, select {
+input,
+select {
   width: 100%;
   padding: 0.75rem;
   border: 2px solid #e1e8ed;
@@ -120,7 +206,8 @@ input, select {
   transition: border-color 0.2s ease;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: #3498db;
 }
@@ -418,25 +505,25 @@ small {
   .container {
     padding: 1rem 0.5rem;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .time-input-group {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .time-input-group input {
     width: 100%;
   }
-  
+
   .task-header {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .task-actions {
     align-self: flex-start;
     flex-direction: row;
@@ -458,6 +545,7 @@ small {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
