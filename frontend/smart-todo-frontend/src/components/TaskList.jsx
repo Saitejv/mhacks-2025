@@ -8,6 +8,7 @@ const TaskList = ({
   onUpdateTask, 
   onDeleteTask,
   isTaskBlocked,
+  // eslint-disable-next-line no-unused-vars
   isTaskAvailable 
 }) => {
   const [deletingTaskId, setDeletingTaskId] = useState(null);

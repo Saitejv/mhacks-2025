@@ -63,14 +63,36 @@ body {
 }
 
 .side-brand h2 {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   color: #2c3e50;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.side-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.side-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.side-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
 }
 
 .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .side-link {
@@ -80,13 +102,126 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
   color: #34495e;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
 }
 
 .side-link.active,
 .side-link:hover {
   background: #f1f6fb;
+  color: #3498db;
+}
+
+/* Quick Task Form */
+.quick-task-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quick-task-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: #fafbfc;
+}
+
+.quick-task-input:focus {
+  outline: none;
+  border-color: #3498db;
+  background: white;
+}
+
+.quick-task-btn {
+  padding: 0.5rem 0.75rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+}
+
+.quick-task-btn:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.quick-task-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quick-task-hint {
+  color: #95a5a6;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+/* Task Overview */
+.task-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.overview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.overview-label {
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.overview-value {
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.overview-value.completed {
+  background: #d5f4e6;
+  color: #27ae60;
+}
+
+.overview-value.blocked {
+  background: #fdf2e9;
+  color: #e67e22;
+}
+
+.overview-value.available {
+  background: #e8f5e8;
+  color: #2ecc71;
+}
+
+.mini-hierarchy-btn {
+  width: 100%;
+  padding: 0.5rem;
+  background: transparent;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  color: #7f8c8d;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mini-hierarchy-btn:hover {
+  background: #f8f9fa;
+  border-color: #3498db;
+  color: #3498db;
 }
 
 .side-footer {
@@ -488,7 +623,158 @@ small {
   color: #7f8c8d;
 }
 
-/* Empty state */
+/* Task Hierarchy Styles */
+.task-hierarchy {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.hierarchy-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.hierarchy-header h3 {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  font-size: 1.3rem;
+}
+
+.hierarchy-header p {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.hierarchy-tree {
+  position: relative;
+}
+
+.hierarchy-node {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.hierarchy-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.hierarchy-item:hover {
+  background: #e8f4f8;
+  border-color: #3498db;
+}
+
+.hierarchy-icon {
+  font-size: 1.1rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.hierarchy-title {
+  flex: 1;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.hierarchy-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hierarchy-priority {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.hierarchy-priority.priority-high {
+  background: #fee;
+  color: #e74c3c;
+}
+
+.hierarchy-priority.priority-medium {
+  background: #fff3cd;
+  color: #e67e22;
+}
+
+.hierarchy-priority.priority-low {
+  background: #f0f0f0;
+  color: #95a5a6;
+}
+
+.hierarchy-duration {
+  background: #ecf0f1;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.hierarchy-children {
+  position: relative;
+}
+
+.hierarchy-children::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: -0.5rem;
+  bottom: 0.5rem;
+  width: 2px;
+  background: #ddd;
+}
+
+.hierarchy-children .hierarchy-node::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  width: 20px;
+  height: 2px;
+  background: #ddd;
+  transform: translateY(-50%);
+}
+
+/* Empty state for hierarchy */
+.task-hierarchy .empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #7f8c8d;
+  margin-bottom: 0.5rem;
+}
+
+.empty-description {
+  color: #95a5a6;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* General Empty state */
 .empty-state {
   text-align: center;
   padding: 3rem;
