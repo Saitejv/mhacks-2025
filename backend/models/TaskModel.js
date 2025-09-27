@@ -13,19 +13,24 @@ const TaskSchema = new Schema({
         type: Number, // Duration in minutes (or specify unit in docs)
         required: true,
         min: 1
-    },
-    deadline: {
+        },
+        deadline: {
         type: Date,
         required: true
-    },
-    user: {
+        },
+        user: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
-    }
-}, {
-    collection: 'tasks',
-    timestamps: true // Adds createdAt and updatedAt
+        },
+        priority: {
+        type: String,
+        required: true,
+        trim: true
+        }
+    }, {
+        collection: 'tasks',
+        timestamps: true // Adds createdAt and updatedAt
 });
 
 // Task Model

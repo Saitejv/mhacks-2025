@@ -10,12 +10,14 @@ const TASKS_FILE = path.join(__dirname, 'data', 'tasks.json');
 
 const argon2 = require('argon2');
 const User = require('./models/User');
+const Task= require('./models/Task');
+const session = require('express-session');
 
 const SESSION_MAX_AGE = 60 * 60 * 1000
 
 let sessionConfig = {
     name: 'sessionId',
-    secret: process.env.SESSION_SECRET,
+    secret: "maanas is gay",
     cookie: {
         maxAge: SESSION_MAX_AGE,
         secure: process.env.RENDER ? true : false,
@@ -27,7 +29,7 @@ let sessionConfig = {
 }
 
 const cors_options = {
-    origin: process.env.ALLOWED_ORIGIN,
+    origin: "localhost:3000",
     credentials: true,
 }
 
@@ -93,6 +95,7 @@ app.post('/api/logout', (req, res) => {
     });
 });
 
+// Route to check if a user is logged in
 app.get('/api/current-user', (req, res) => {
     if (req.session && req.session.userId) {
         res.json({ loggedIn: true, username: req.session.userId });
@@ -101,32 +104,12 @@ app.get('/api/current-user', (req, res) => {
     }
 });
 
-// Helper functions
-const loadTasks = async () => {
-    try {
-        if (await fs.pathExists(TASKS_FILE)) {
-            return await fs.readJson(TASKS_FILE);
-        }
-        return [];
-    } catch (error) {
-        console.error('Error loading tasks:', error);
-        return [];
-    }
-};
-
-const saveTasks = async (tasks) => {
-    try {
-        await fs.writeJson(TASKS_FILE, tasks, { spaces: 2 });
-    } catch (error) {
-        console.error('Error saving tasks:', error);
-    }
-};
+const Task = require('./models/Task');
 
 const isTaskBlocked = (task, allTasks) => {
     if (!task.dependencies || task.dependencies.length === 0) return false;
-    
     return task.dependencies.some(depId => {
-        const dependency = allTasks.find(t => t.id === depId);
+        const dependency = allTasks.find(t => t._id.toString() === depId.toString());
         return dependency && !dependency.completed;
     });
 };
@@ -137,7 +120,7 @@ const isTaskAvailable = (task, allTasks) => {
 
 const getRecommendations = (availableMinutes, allTasks) => {
     // Filter available tasks that fit within time constraint
-    const eligibleTasks = allTasks.filter(task => 
+    const eligibleTasks = allTasks.filter(task =>
         isTaskAvailable(task, allTasks) && task.duration <= availableMinutes
     );
 
@@ -146,25 +129,17 @@ const getRecommendations = (availableMinutes, allTasks) => {
     }
 
     // Scoring algorithm considering priority and urgency
+    const priorityScores = { high: 10, medium: 5, low: 1 };
     const scoredTasks = eligibleTasks.map(task => {
         let score = 0;
-        
-        // Priority scoring (High: 10, Medium: 5, Low: 1)
-        const priorityScores = { high: 10, medium: 5, low: 1 };
         score += priorityScores[task.priority] || 1;
-        
-        // Duration efficiency (prefer tasks that use available time well)
         const timeUtilization = task.duration / availableMinutes;
         score += timeUtilization * 5;
-        
-        // Slight preference for older tasks
         const daysSinceCreated = (Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60 * 24);
         score += Math.min(daysSinceCreated * 0.1, 2);
-
         return { task, score };
     });
 
-    // Sort by score (descending)
     scoredTasks.sort((a, b) => b.score - a.score);
 
     return {
@@ -173,12 +148,15 @@ const getRecommendations = (availableMinutes, allTasks) => {
     };
 };
 
-// Routes
+// Helper to load tasks from MongoDB model instead of JSON
+const loadTasks = async () => {
+    return await Task.find({});
+};
 
 // Get all tasks
 app.get('/api/tasks', async (req, res) => {
     try {
-        const tasks = await loadTasks();
+        const tasks = await Task.find({});
         res.json(tasks);
     } catch (error) {
         res.status(500).json({ error: 'Failed to load tasks' });
@@ -194,19 +172,16 @@ app.post('/api/tasks', async (req, res) => {
             return res.status(400).json({ error: 'Title, duration, and priority are required' });
         }
 
-        const tasks = await loadTasks();
-        const newTask = {
-            id: Date.now() + Math.random(),
+        const newTask = new Task({
             title: title.trim(),
             duration: parseInt(duration),
-            priority: priority,
-            dependencies: dependencies,
+            priority,
+            dependencies,
             completed: false,
             createdAt: new Date().toISOString()
-        };
+        });
 
-        tasks.push(newTask);
-        await saveTasks(tasks);
+        await newTask.save();
         res.status(201).json(newTask);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create task' });
@@ -216,19 +191,14 @@ app.post('/api/tasks', async (req, res) => {
 // Update a task
 app.put('/api/tasks/:id', async (req, res) => {
     try {
-        const taskId = parseFloat(req.params.id);
+        const taskId = req.params.id;
         const updates = req.body;
-        
-        const tasks = await loadTasks();
-        const taskIndex = tasks.findIndex(task => task.id === taskId);
-        
-        if (taskIndex === -1) {
+
+        const updatedTask = await Task.findByIdAndUpdate(taskId, updates, { new: true });
+        if (!updatedTask) {
             return res.status(404).json({ error: 'Task not found' });
         }
-        
-        tasks[taskIndex] = { ...tasks[taskIndex], ...updates };
-        await saveTasks(tasks);
-        res.json(tasks[taskIndex]);
+        res.json(updatedTask);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update task' });
     }
@@ -237,21 +207,16 @@ app.put('/api/tasks/:id', async (req, res) => {
 // Delete a task
 app.delete('/api/tasks/:id', async (req, res) => {
     try {
-        const taskId = parseFloat(req.params.id);
-        const tasks = await loadTasks();
-        
-        const filteredTasks = tasks.filter(task => task.id !== taskId);
-        
-        if (filteredTasks.length === tasks.length) {
+        const taskId = req.params.id;
+        const deletedTask = await Task.findByIdAndDelete(taskId);
+        if (!deletedTask) {
             return res.status(404).json({ error: 'Task not found' });
         }
-        
         // Remove this task from other tasks' dependencies
-        filteredTasks.forEach(task => {
-            task.dependencies = task.dependencies.filter(depId => depId !== taskId);
-        });
-        
-        await saveTasks(filteredTasks);
+        await Task.updateMany(
+            { dependencies: taskId },
+            { $pull: { dependencies: taskId } }
+        );
         res.json({ message: 'Task deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete task' });
