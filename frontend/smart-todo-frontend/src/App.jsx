@@ -112,6 +112,8 @@ function App() {
           onNavigate={handleNavigate}
           isSignedIn={isSignedIn}
           onSignInToggle={() => setIsSignedIn(prev => !prev)}
+          tasks={tasks}
+          onCreateTask={handleCreateTask}
         />
       </aside>
 

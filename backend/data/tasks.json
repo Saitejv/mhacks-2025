@@ -69,5 +69,14 @@
     ],
     "completed": false,
     "createdAt": "2025-09-27T19:08:59.748Z"
+  },
+  {
+    "id": 1759016520430.0764,
+    "title": "Test quick task",
+    "duration": 30,
+    "priority": "medium",
+    "dependencies": [],
+    "completed": false,
+    "createdAt": "2025-09-27T23:42:00.430Z"
   }
 ]
