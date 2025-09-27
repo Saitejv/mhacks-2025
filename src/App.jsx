@@ -18,6 +18,8 @@ export default function App() {
     const [due, setDue] = useState('')
     const [available, setAvailable] = useState('')
     const [recommendation, setRecommendation] = useState(null)
+    const [currentView, setCurrentView] = useState('add') // add | choose | hierarchy | tasks | auth
+    const [isSignedIn, setIsSignedIn] = useState(false)
 
     useEffect(() => { // load prefs
         try { const p = JSON.parse(localStorage.getItem(PREFS_KEY)); if (p) { if (p.selectedDuration) setSelectedDuration(p.selectedDuration); if (p.selectedPriority) setSelectedPriority(p.selectedPriority); } } catch (e) { }
@@ -71,111 +73,182 @@ export default function App() {
     function runRecommend() { const res = recommend(available); setRecommendation(res) }
 
     return (
-        <div className="max-w-3xl mx-auto p-6">
-            <header className="mb-4">
-                <h1 className="text-2xl font-semibold">Focus Minutes</h1>
-                <p className="text-sm text-white/80">Turn spare minutes into meaningful wins</p>
-            </header>
-
-            <section className="bg-white/5 p-4 rounded-xl mb-4">
-                <form onSubmit={addTask} className="space-y-3">
-                    <input value={title} onChange={e => setTitle(e.target.value)} placeholder="New task title" className="w-full px-3 py-2 rounded-lg bg-transparent border border-white/5 text-white" />
-
-                    <div>
-                        <div className="text-sm text-white/80">Duration</div>
-                        <div className="flex gap-2 mt-2">
-                            {[10, 30, 60].map(m => (
-                                <button key={m} type="button" onClick={() => { setSelectedDuration(m); try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration: m, selectedPriority })) } catch (e) { } }} className={`px-3 py-1 rounded-full text-sm transition-colors duration-150 ${selectedDuration === m ? 'bg-sky-500 text-slate-900 font-semibold' : 'bg-white/5 text-white'}`}>{m}m</button>
-                            ))}
-                            <input value={customDuration} onChange={e => setCustomDuration(e.target.value)} placeholder="custom (min)" className="w-28 px-2 py-1 rounded-md bg-transparent border border-white/5 text-white" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="text-sm text-white/80">Priority</div>
-                        <div className="flex gap-2 mt-2">
-                            {['Low', 'Medium', 'High'].map(p => (
-                                <button key={p} type="button" onClick={() => { setSelectedPriority(p); try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration, selectedPriority: p })) } catch (e) { } }} className={`px-3 py-1 rounded-full text-sm transition-colors duration-150 ${selectedPriority === p ? 'bg-sky-500 text-slate-900 font-semibold' : 'bg-white/5 text-white'}`}>{p}</button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="text-sm text-white/80">Depends on</div>
-                        <select multiple size={3} value={deps} onChange={e => setDeps(Array.from(e.target.selectedOptions).map(o => o.value))} className="w-full mt-2 px-2 py-2 rounded-md bg-transparent border border-white/5 text-white">
-                            {state.tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="flex gap-2 items-center">
-                        <input type="date" value={due} onChange={e => setDue(e.target.value)} className="px-2 py-1 rounded-md bg-transparent border border-white/5 text-white" />
-                        <button className="px-4 py-2 rounded-lg bg-sky-500 text-slate-900 font-semibold">Add task</button>
-                    </div>
-                </form>
-            </section>
-
-            <section className="bg-white/5 p-4 rounded-xl mb-4">
-                <h2 className="text-lg font-medium text-white">Find a task for spare time</h2>
-                <div className="flex gap-2 mt-3">
-                    <input value={available} onChange={e => setAvailable(e.target.value)} placeholder="Available minutes (e.g., 30)" className="w-40 px-2 py-1 rounded-md bg-transparent border border-white/5 text-white" />
-                    <button onClick={runRecommend} className="px-3 py-1 rounded-md bg-emerald-400 text-slate-900 font-semibold">Recommend</button>
+        <div className="min-h-screen flex bg-slate-900 text-white">
+            {/* Sidebar - 25% */}
+            <aside className="w-1/4 min-h-screen p-6 border-r border-white/5 bg-slate-800">
+                <div className="mb-6">
+                    <h1 className="text-xl font-semibold">Focus Minutes</h1>
+                    <p className="text-xs text-white/80">Turn spare minutes into meaningful wins</p>
                 </div>
-                <div className="mt-3">
-                    {recommendation ? (
-                        <div>
-                            {recommendation.best ? (
-                                <div className="js-panel rounded-xl p-3">
-                                    <div className="font-semibold">{recommendation.best.title} — {recommendation.best.duration}m</div>
-                                    <div className="text-sm text-white/80 mt-1">{recommendation.best.priority} priority{recommendation.best.due ? ' · due ' + new Date(recommendation.best.due).toLocaleDateString() : ''}</div>
-                                    <button onClick={() => { toggleComplete(recommendation.best.id); setRecommendation(null) }} className="mt-3 px-3 py-1 rounded-md bg-emerald-400 text-slate-900 font-semibold">Start</button>
-                                </div>
-                            ) : (
-                                <div>No task fits within {available}m — top priorities you could start:</div>
-                            )}
-                            {recommendation.alternatives && recommendation.alternatives.length > 0 && (
-                                <div className="mt-2 space-y-2">
-                                    {recommendation.alternatives.map(t => (
-                                        <div key={t.id} className="flex justify-between py-2">
-                                            <div className="text-sm text-white">{t.title} — {t.duration}m · {t.priority}</div>
-                                            <div><button onClick={() => { toggleComplete(t.id); setRecommendation(null) }} className="px-3 py-1 rounded-md bg-white/5 text-sm">Start</button></div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ) : null}
-                </div>
-            </section>
 
-            <section>
-                <h2 className="text-lg font-medium text-white">Tasks</h2>
-                <div className="mt-3 space-y-3">
-                    {state.tasks.length === 0 ? <small className="text-white/70">No tasks yet — add one above.</small> : (
-                        state.tasks.sort((a, b) => (a.completed === b.completed ? (a.priority === b.priority ? new Date(a.createdAt) - new Date(b.createdAt) : (b.priority === 'High' ? 1 : b.priority === 'Medium' ? 2 : 3) - (a.priority === 'High' ? 1 : a.priority === 'Medium' ? 2 : 3)) : a.completed ? 1 : -1)).map(t => (
-                            <div key={t.id} className="flex justify-between items-start p-3 rounded-xl bg-white/3 border border-white/5">
-                                <div className="flex gap-3 items-start">
-                                    <div>
-                                        <div className={`font-medium ${t.completed ? 'opacity-50 line-through' : ''}`}>{t.title}</div>
-                                        <div className="flex gap-2 items-center text-sm text-white/80 mt-2">
-                                            <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-white">{t.duration}m</span>
-                                            <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-white">{t.priority}</span>
-                                            {t.due && <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-white">Due: {new Date(t.due).toLocaleDateString()}</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 items-center">
-                                    <span className={`px-2 py-0.5 rounded-full text-xs ${isBlocked(t) ? 'bg-rose-500 text-white' : 'bg-emerald-400 text-slate-900'}`}>{isBlocked(t) ? 'Blocked' : 'Ready'}</span>
-                                    <button onClick={() => toggleComplete(t.id)} className="px-2 py-1 rounded-md bg-white/5 text-sm">{t.completed ? 'Undo' : 'Done'}</button>
-                                    <button onClick={() => { if (confirm('Delete task?')) deleteTask(t.id) }} className="px-2 py-1 rounded-md bg-white/5 text-sm">Delete</button>
-                                </div>
-                                {t.deps && t.deps.length > 0 && <div className="text-sm text-white/80 mt-2">Depends on: {t.deps.map(d => { const dep = state.tasks.find(x => x.id === d); return dep ? dep.title + (dep.completed ? ' ✓' : ' ✗') : '(missing)' }).join(' · ')}</div>}
-                            </div>
-                        ))
+                <nav className="space-y-2">
+                    <button onClick={() => setCurrentView('add')} className={`w-full text-left px-3 py-2 rounded ${currentView === 'add' ? 'bg-sky-500 text-slate-900' : 'bg-white/5'}`}>Add Tasks</button>
+                    <button onClick={() => setCurrentView('choose')} className={`w-full text-left px-3 py-2 rounded ${currentView === 'choose' ? 'bg-sky-500 text-slate-900' : 'bg-white/5'}`}>Choose Tasks</button>
+                    <button onClick={() => setCurrentView('hierarchy')} className={`w-full text-left px-3 py-2 rounded ${currentView === 'hierarchy' ? 'bg-sky-500 text-slate-900' : 'bg-white/5'}`}>View Task Hierarchy</button>
+                    <button onClick={() => setCurrentView('tasks')} className={`w-full text-left px-3 py-2 rounded ${currentView === 'tasks' ? 'bg-sky-500 text-slate-900' : 'bg-white/5'}`}>All Tasks</button>
+                </nav>
+
+                <div className="mt-6">
+                    <div className="text-sm text-white/80 mb-2">Account</div>
+                    {isSignedIn ? (
+                        <div className="space-y-2">
+                            <div className="text-sm">Signed in</div>
+                            <button onClick={() => { setIsSignedIn(false); setCurrentView('auth') }} className="w-full px-3 py-2 rounded bg-white/5">Sign out</button>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <div className="text-sm">Not signed in</div>
+                            <button onClick={() => { setIsSignedIn(true); setCurrentView('tasks') }} className="w-full px-3 py-2 rounded bg-emerald-400 text-slate-900">Sign in</button>
+                        </div>
                     )}
                 </div>
-            </section>
 
-            <footer className="mt-6 text-sm text-white/80">Minimal, offline-first. Data saved in browser storage.</footer>
+                <footer className="absolute bottom-6 left-6 text-xs text-white/60">Minimal, offline-first</footer>
+            </aside>
+
+            {/* Main content - 75% */}
+            <main className="flex-1 p-6 overflow-auto">
+                {/* Add Tasks view */}
+                {currentView === 'add' && (
+                    <section className="max-w-3xl">
+                        <header className="mb-4">
+                            <h2 className="text-2xl font-semibold">Add Task</h2>
+                            <p className="text-sm text-white/80">Create a task with duration, priority and optional dependencies.</p>
+                        </header>
+
+                        <div className="bg-white/5 p-4 rounded-xl mb-4">
+                            <form onSubmit={addTask} className="space-y-3">
+                                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="New task title" className="w-full px-3 py-2 rounded-lg bg-transparent border border-white/5 text-white" />
+
+                                <div>
+                                    <div className="text-sm text-white/80">Duration</div>
+                                    <div className="flex gap-2 mt-2">
+                                        {[10, 30, 60].map(m => (
+                                            <button key={m} type="button" onClick={() => { setSelectedDuration(m); try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration: m, selectedPriority })) } catch (e) { } }} className={`px-3 py-1 rounded-full text-sm transition-colors duration-150 ${selectedDuration === m ? 'bg-sky-500 text-slate-900 font-semibold' : 'bg-white/5 text-white'}`}>{m}m</button>
+                                        ))}
+                                        <input value={customDuration} onChange={e => setCustomDuration(e.target.value)} placeholder="custom (min)" className="w-28 px-2 py-1 rounded-md bg-transparent border border-white/5 text-white" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-sm text-white/80">Priority</div>
+                                    <div className="flex gap-2 mt-2">
+                                        {['Low', 'Medium', 'High'].map(p => (
+                                            <button key={p} type="button" onClick={() => { setSelectedPriority(p); try { localStorage.setItem(PREFS_KEY, JSON.stringify({ selectedDuration, selectedPriority: p })) } catch (e) { } }} className={`px-3 py-1 rounded-full text-sm transition-colors duration-150 ${selectedPriority === p ? 'bg-sky-500 text-slate-900 font-semibold' : 'bg-white/5 text-white'}`}>{p}</button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-sm text-white/80">Depends on</div>
+                                    <select multiple size={3} value={deps} onChange={e => setDeps(Array.from(e.target.selectedOptions).map(o => o.value))} className="w-full mt-2 px-2 py-2 rounded-md bg-transparent border border-white/5 text-white">
+                                        {state.tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="flex gap-2 items-center">
+                                    <input type="date" value={due} onChange={e => setDue(e.target.value)} className="px-2 py-1 rounded-md bg-transparent border border-white/5 text-white" />
+                                    <button className="px-4 py-2 rounded-lg bg-sky-500 text-slate-900 font-semibold">Add task</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+                )}
+
+                {/* Choose Tasks (recommendation) view */}
+                {currentView === 'choose' && (
+                    <section className="max-w-3xl">
+                        <h2 className="text-xl font-medium mb-3">Find a task for spare time</h2>
+                        <div className="bg-white/5 p-4 rounded-xl mb-4">
+                            <div className="flex gap-2">
+                                <input value={available} onChange={e => setAvailable(e.target.value)} placeholder="Available minutes (e.g., 30)" className="w-40 px-2 py-1 rounded-md bg-transparent border border-white/5 text-white" />
+                                <button onClick={runRecommend} className="px-3 py-1 rounded-md bg-emerald-400 text-slate-900 font-semibold">Recommend</button>
+                            </div>
+                            <div className="mt-3">
+                                {recommendation ? (
+                                    <div>
+                                        {recommendation.best ? (
+                                            <div className="js-panel rounded-xl p-3">
+                                                <div className="font-semibold">{recommendation.best.title} — {recommendation.best.duration}m</div>
+                                                <div className="text-sm text-white/80 mt-1">{recommendation.best.priority} priority{recommendation.best.due ? ' · due ' + new Date(recommendation.best.due).toLocaleDateString() : ''}</div>
+                                                <button onClick={() => { toggleComplete(recommendation.best.id); setRecommendation(null) }} className="mt-3 px-3 py-1 rounded-md bg-emerald-400 text-slate-900 font-semibold">Start</button>
+                                            </div>
+                                        ) : (
+                                            <div>No task fits within {available}m — top priorities you could start:</div>
+                                        )}
+                                        {recommendation.alternatives && recommendation.alternatives.length > 0 && (
+                                            <div className="mt-2 space-y-2">
+                                                {recommendation.alternatives.map(t => (
+                                                    <div key={t.id} className="flex justify-between py-2">
+                                                        <div className="text-sm text-white">{t.title} — {t.duration}m · {t.priority}</div>
+                                                        <div><button onClick={() => { toggleComplete(t.id); setRecommendation(null) }} className="px-3 py-1 rounded-md bg-white/5 text-sm">Start</button></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* Hierarchy view */}
+                {currentView === 'hierarchy' && (
+                    <section className="max-w-3xl">
+                        <h2 className="text-xl font-medium mb-3">Task Hierarchy</h2>
+                        <div className="bg-white/5 p-4 rounded-xl">
+                            {state.tasks.length === 0 ? <div className="text-white/70">No tasks yet.</div> : (
+                                <ul className="space-y-2">
+                                    {state.tasks.map(t => (
+                                        <li key={t.id} className="p-3 rounded bg-white/3">
+                                            <div className="font-medium">{t.title} <span className="text-sm text-white/70">— {t.duration}m • {t.priority}</span></div>
+                                            {t.deps && t.deps.length > 0 && (
+                                                <div className="mt-2 text-sm text-white/80">Depends on:
+                                                    <ul className="ml-4 list-disc">
+                                                        {t.deps.map(d => { const dep = state.tasks.find(x => x.id === d); return <li key={d} className="text-sm">{dep ? dep.title + (dep.completed ? ' ✓' : ' ✗') : '(missing)'}</li> })}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {/* All tasks view */}
+                {currentView === 'tasks' && (
+                    <section className="max-w-3xl">
+                        <h2 className="text-xl font-medium mb-3">All Tasks</h2>
+                        <div className="mt-3 space-y-3">
+                            {state.tasks.length === 0 ? <small className="text-white/70">No tasks yet — add one using the sidebar.</small> : (
+                                state.tasks.sort((a, b) => (a.completed === b.completed ? (a.priority === b.priority ? new Date(a.createdAt) - new Date(b.createdAt) : (b.priority === 'High' ? 1 : b.priority === 'Medium' ? 2 : 3) - (a.priority === 'High' ? 1 : a.priority === 'Medium' ? 2 : 3)) : a.completed ? 1 : -1)).map(t => (
+                                    <div key={t.id} className="flex justify-between items-start p-3 rounded-xl bg-white/3 border border-white/5">
+                                        <div className="flex gap-3 items-start">
+                                            <div>
+                                                <div className={`font-medium ${t.completed ? 'opacity-50 line-through' : ''}`}>{t.title}</div>
+                                                <div className="flex gap-2 items-center text-sm text-white/80 mt-2">
+                                                    <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-white">{t.duration}m</span>
+                                                    <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-white">{t.priority}</span>
+                                                    {t.due && <span className="px-2 py-0.5 rounded-full bg-white/5 text-xs text-white">Due: {new Date(t.due).toLocaleDateString()}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <span className={`px-2 py-0.5 rounded-full text-xs ${isBlocked(t) ? 'bg-rose-500 text-white' : 'bg-emerald-400 text-slate-900'}`}>{isBlocked(t) ? 'Blocked' : 'Ready'}</span>
+                                            <button onClick={() => toggleComplete(t.id)} className="px-2 py-1 rounded-md bg-white/5 text-sm">{t.completed ? 'Undo' : 'Done'}</button>
+                                            <button onClick={() => { if (confirm('Delete task?')) deleteTask(t.id) }} className="px-2 py-1 rounded-md bg-white/5 text-sm">Delete</button>
+                                        </div>
+                                        {t.deps && t.deps.length > 0 && <div className="text-sm text-white/80 mt-2">Depends on: {t.deps.map(d => { const dep = state.tasks.find(x => x.id === d); return dep ? dep.title + (dep.completed ? ' ✓' : ' ✗') : '(missing)' }).join(' · ')}</div>}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </section>
+                )}
+            </main>
         </div>
     )
 }

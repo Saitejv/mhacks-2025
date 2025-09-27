@@ -1,18 +1,49 @@
 {
-    "name": "mhacks-2025-focus-minutes",
-    "version": "0.1.0",
+    "name": "smart-todo-mhacks-2025",
+    "version": "1.0.0",
     "private": true,
+    "description": "A modern, full-stack task management application with intelligent time-based recommendations",
     "type": "module",
+    "main": "backend/server.js",
     "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "preview": "vite preview"
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+        "dev:backend": "cd backend && npm run dev",
+        "dev:frontend": "cd frontend/smart-todo-frontend && npm run dev",
+        "start": "cd backend && npm start",
+        "build": "cd frontend/smart-todo-frontend && npm run build",
+        "install:all": "npm install && cd backend && npm install && cd ../frontend/smart-todo-frontend && npm install",
+        "clean": "rm -rf node_modules backend/node_modules frontend/smart-todo-frontend/node_modules"
     },
+    "keywords": [
+        "todo",
+        "task-management",
+        "react",
+        "nodejs",
+        "mhacks-2025",
+        "recommendations",
+        "productivity"
+    ],
+    "author": "MHacks 2025 Team",
+    "license": "MIT",
     "dependencies": {
-        "react": "18.2.0",
-        "react-dom": "18.2.0"
+        "axios": "^1.12.2",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0"
     },
     "devDependencies": {
-        "vite": "5.0.0"
-    }
+        "@vitejs/plugin-react": "^5.0.4",
+        "concurrently": "^8.2.2",
+        "vite": "^5.0.0"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Saitejv/mhacks-2025.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Saitejv/mhacks-2025/issues"
+    },
+    "homepage": "https://github.com/Saitejv/mhacks-2025#readme"
 }
