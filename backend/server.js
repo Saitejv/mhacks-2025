@@ -8,12 +8,98 @@ const app = express();
 const PORT = process.env.PORT || 8001; // Changed port to 8001
 const TASKS_FILE = path.join(__dirname, 'data', 'tasks.json');
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
+const argon2 = require('argon2');
+const User = require('./models/User');
 
-// Ensure data directory exists
-fs.ensureDirSync(path.dirname(TASKS_FILE));
+const SESSION_MAX_AGE = 60 * 60 * 1000
+
+let sessionConfig = {
+    name: 'sessionId',
+    secret: process.env.SESSION_SECRET,
+    cookie: {
+        maxAge: SESSION_MAX_AGE,
+        secure: process.env.RENDER ? true : false,
+        httpOnly: false,
+    },
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+}
+
+const cors_options = {
+    origin: process.env.ALLOWED_ORIGIN,
+    credentials: true,
+}
+
+// Middleware
+app.use(cors(cors_options));
+app.use(bodyParser.json());
+app.use(session(sessionConfig));
+app.set('trust proxy', 1);
+
+// Register route
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(409).json({ error: 'Username already exists' });
+        }
+        const hashedPassword = await argon2.hash(password);
+        const user = new User({ username, password: hashedPassword });
+        await user.save();
+        // Set session
+        req.session.userId = user.username;
+        res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+// Login route
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        const valid = await argon2.verify(user.password, password);
+        if (!valid) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        // Set session
+        req.session.userId = user.username;
+        res.json({ message: 'Login successful' });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// Logout route
+app.post('/api/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ error: 'Logout failed' });
+        }
+        res.clearCookie(sessionConfig.name);
+        res.json({ message: 'Logout successful' });
+    });
+});
+
+app.get('/api/current-user', (req, res) => {
+    if (req.session && req.session.userId) {
+        res.json({ loggedIn: true, username: req.session.userId });
+    } else {
+        res.json({ loggedIn: false });
+    }
+});
 
 // Helper functions
 const loadTasks = async () => {
@@ -189,68 +275,6 @@ app.post('/api/recommendations', async (req, res) => {
         res.status(500).json({ error: 'Failed to get recommendations' });
     }
 });
-
-// Initialize with sample data if no tasks exist
-const initializeSampleData = async () => {
-    const tasks = await loadTasks();
-    
-    if (tasks.length === 0) {
-        const sampleTasks = [
-            {
-                id: Date.now() + 1,
-                title: 'Review project requirements',
-                duration: 15,
-                priority: 'high',
-                dependencies: [],
-                completed: false,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: Date.now() + 2,
-                title: 'Set up development environment',
-                duration: 30,
-                priority: 'high',
-                dependencies: [],
-                completed: false,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: Date.now() + 3,
-                title: 'Create wireframes',
-                duration: 45,
-                priority: 'medium',
-                dependencies: [],
-                completed: false,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: Date.now() + 4,
-                title: 'Write documentation',
-                duration: 60,
-                priority: 'low',
-                dependencies: [],
-                completed: false,
-                createdAt: new Date().toISOString()
-            }
-        ];
-        
-        // Add a task with dependencies
-        const task1 = sampleTasks[0];
-        const task2 = sampleTasks[1];
-        sampleTasks.push({
-            id: Date.now() + 5,
-            title: 'Start coding',
-            duration: 120,
-            priority: 'high',
-            dependencies: [task1.id, task2.id],
-            completed: false,
-            createdAt: new Date().toISOString()
-        });
-        
-        await saveTasks(sampleTasks);
-        console.log('Sample data initialized');
-    }
-};
 
 // Start server
 app.listen(PORT, async () => {
